@@ -319,6 +319,28 @@ export STRIX_LLM="chatgpt/gpt-5.4"   # chatgpt/<model> runs on the subscription
 strix auth status                    # show the active sign-in, or logout to forget it
 ```
 
+#### Sign in with a Claude subscription
+
+You can also run Strix on your Claude Pro/Max subscription. Strix drives your installed
+[Claude Code](https://docs.claude.com/en/docs/claude-code) CLI, so Claude Code owns the
+sign-in — Strix never stores your Claude credentials:
+
+```bash
+strix auth login claude      # delegates to the Claude Code CLI (claude auth login)
+
+export STRIX_LLM="claude-code/claude-opus-4-8"   # claude-code/<model> runs on the subscription
+strix --target ./app-directory
+
+strix auth status            # show the active sign-in
+strix auth logout claude     # sign out of Claude Code (global to the CLI)
+```
+
+The `claude` CLI must be installed and signed in **on the host running Strix**. This is
+the subscription, not an API key, so usage shows real token counts at $0 cost. Because
+Anthropic controls the subscription billing terms, behaviour can change without a Strix
+release. Multi-agent scans burst hard against subscription rate limits — Max 20x is
+realistically needed; on Pro, prefer a quick scan with fewer agents.
+
 #### Use the managed platform: `strix cloud`
 
 Run scans on [app.strix.ai](https://app.strix.ai) from the terminal, without Docker or an LLM key:
