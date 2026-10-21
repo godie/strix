@@ -379,6 +379,19 @@ def test_model_slug_cannot_inject_cli_arguments(monkeypatch: pytest.MonkeyPatch)
     assert "--dangerously-skip-permissions" not in argv
 
 
+def test_agent_turns_cap_max_turns(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(claude_code, "binary_path", lambda: "/usr/bin/claude")
+    argv = claude_process._build_argv("claude-opus-4-8", [])
+    assert argv[argv.index("--max-turns") + 1] == "3"
+    monkeypatch.setenv("STRIX_CLAUDE_CODE_MAX_TURNS", "5")
+    argv = claude_process._build_argv("claude-opus-4-8", [])
+    assert argv[argv.index("--max-turns") + 1] == "5"
+    monkeypatch.setenv("STRIX_CLAUDE_CODE_MAX_TURNS", "junk")
+    argv = claude_process._build_argv("claude-opus-4-8", [])
+    assert argv[argv.index("--max-turns") + 1] == "3"
+    assert "--max-turns" not in claude_process._build_argv("claude-opus-4-8", [], structured=False)
+
+
 def test_toolless_turn_requests_an_unstructured_reply(monkeypatch: pytest.MonkeyPatch) -> None:
     # tools=[] means a one-shot completion (dedupe, preflight): the caller parses
     # the reply itself, so the envelope must not be forced onto it.
