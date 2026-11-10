@@ -759,7 +759,13 @@ class StrixProvider(MultiProvider):
         return self._get_fallback_provider("litellm"), original_model_name
 
     def get_model(self, model_name: str | None) -> Model:
+        from strix.config import freebuff
+
         llm = load_settings().llm
+        if freebuff.freebuff_model(model_name):
+            # A claimed prefix with no transport behind it: stop here, rather than
+            # let LiteLLM resolve a model name no provider knows.
+            raise RuntimeError(freebuff.unavailable_error(model_name))
         cc_slug = claude_code.claude_code_model(model_name)
         slug = codex.subscription_model(model_name)
         # The settings use 0 for no bound.
@@ -1251,8 +1257,15 @@ def routes_through_litellm(model_name: str | None) -> bool:
     LiteLLM: ``chatgpt/`` by the Responses client and ``claude-code/`` by the
     ``claude -p`` bridge.
     """
+    from strix.config import freebuff
+
     name = (model_name or "").strip()
-    if not name or codex.subscription_model(name) or claude_code.claude_code_model(name):
+    if (
+        not name
+        or codex.subscription_model(name)
+        or claude_code.claude_code_model(name)
+        or freebuff.freebuff_model(name)
+    ):
         return False
     prefix, _, rest = name.partition("/")
     return bool(rest) and prefix.lower() not in {"openai", "any-llm"}

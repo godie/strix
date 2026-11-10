@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from strix.config import IntegrationSettings, claude_code, codex, load_settings
+from strix.config import IntegrationSettings, claude_code, codex, freebuff, load_settings
 from strix.interface.utils import (
     check_docker_connection,
     image_exists,
@@ -118,6 +118,21 @@ def _validate_claude_code(console: Console, model: str | None) -> None:
     logger.info("Environment OK (Claude Code subscription)")
 
 
+def _validate_freebuff(console: Console, model: str | None) -> None:
+    """Preflight for a ``freebuff/...`` run: stop unless it can actually be driven.
+
+    There is no transport for Freebuff yet, so this is a gate, not a setup check:
+    it turns a prefix Strix claims into one message that names the reason and the
+    backend to use instead.
+    """
+    problem = freebuff.problem()
+    if problem is None:
+        return
+    console.print(f"[red]STRIX_LLM={model} can't run on the Freebuff CLI yet.[/] {problem}")
+    report_error("freebuff_unavailable")
+    sys.exit(1)
+
+
 def validate_environment() -> None:
     logger.info("Validating environment")
     console = Console()
@@ -135,6 +150,10 @@ def validate_environment() -> None:
             report_error("subscription_not_signed_in")
             sys.exit(1)
         logger.info("Environment OK (ChatGPT subscription)")
+        return
+
+    if freebuff.freebuff_model(settings.llm.model):
+        _validate_freebuff(console, settings.llm.model)
         return
 
     if claude_code.claude_code_model(settings.llm.model):

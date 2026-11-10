@@ -17,6 +17,8 @@ import subprocess  # we invoke a trusted, user-installed CLI, never a shell
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, cast
 
+from strix.config import code_agent_cli
+
 
 if TYPE_CHECKING:
     from strix.config.settings import ReasoningEffort
@@ -46,7 +48,12 @@ SUBSCRIPTION_PREFIX = "claude-code/"
 # api_error_status is not visible in the published artifacts.
 MIN_CLAUDE_VERSION = (2, 1, 220)
 
-_PROBE_TIMEOUT_S = 8
+SPEC = code_agent_cli.CodeAgentCli(
+    provider=PROVIDER,
+    binary="claude",
+    display_name="Claude Code",
+    min_version=MIN_CLAUDE_VERSION,
+)
 
 
 class ClaudeCodeError(Exception):
@@ -107,19 +114,7 @@ def _run_claude(args: list[str]) -> subprocess.CompletedProcess[str]:
     binary = binary_path()
     if binary is None:
         raise ClaudeCodeError("the `claude` CLI is not on PATH", retryable=False)
-    return subprocess.run(  # noqa: S603  # trusted binary, fixed argv, no shell
-        [binary, *args],
-        capture_output=True,
-        text=True,
-        # Pinned, because text=True otherwise decodes with the host locale codec:
-        # the CLI emits UTF-8, and a console on a non-UTF-8 code page (cp1252,
-        # cp932) would raise UnicodeDecodeError straight out of a probe that is
-        # only supposed to answer a question.
-        encoding="utf-8",
-        errors="replace",
-        timeout=_PROBE_TIMEOUT_S,
-        check=False,
-    )
+    return code_agent_cli.run_cli(binary, args)
 
 
 @lru_cache(maxsize=1)
@@ -139,16 +134,7 @@ def version() -> str | None:
 
 
 def _parse_version(raw: str | None) -> tuple[int, int, int] | None:
-    if not raw:
-        return None
-    token = raw.strip().split()[0]
-    parts = token.split(".")
-    try:
-        nums = tuple(int(p) for p in parts[:3])
-    except ValueError:
-        return None
-    padded = (*nums, 0, 0)[:3]
-    return (padded[0], padded[1], padded[2])
+    return code_agent_cli.parse_version(raw)
 
 
 def version_state() -> str:
@@ -158,10 +144,7 @@ def version_state() -> str:
     tell someone whose binary did not run, or whose version string this cannot
     read, and both of those reach here as a missing version.
     """
-    parsed = _parse_version(version())
-    if parsed is None:
-        return "unknown"
-    return "ok" if parsed >= MIN_CLAUDE_VERSION else "too_old"
+    return code_agent_cli.version_state(SPEC, version())
 
 
 def meets_min_version() -> bool:

@@ -9,7 +9,7 @@ subscription backend is a one-line change, not a four-place hunt.
 
 from __future__ import annotations
 
-from strix.config import claude_code, codex
+from strix.config import claude_code, codex, freebuff
 
 
 def auth_mode(model_name: str | None) -> str:
@@ -23,6 +23,12 @@ def auth_mode(model_name: str | None) -> str:
     guard on a metered scan.
     """
     if codex.subscription_model(model_name):
+        return "subscription"
+    if freebuff.freebuff_model(model_name):
+        # The free tier is ad-supported and flat-rate, so a run on it costs $0
+        # like the other subscription backends. It cannot start yet (the CLI has
+        # no non-interactive mode), but calling it metered would be wrong the
+        # moment it can, and would put a price on a free plan.
         return "subscription"
     if claude_code.claude_code_model(model_name):
         return "subscription" if claude_code.session_state() == "subscription" else "api_key"
@@ -41,6 +47,8 @@ def label(model_name: str | None) -> str:
     """
     if claude_code.claude_code_model(model_name):
         return "Claude subscription"
+    if freebuff.freebuff_model(model_name):
+        return "Freebuff (free plan)"
     if codex.subscription_model(model_name):
         return "ChatGPT subscription"
     return "subscription"
