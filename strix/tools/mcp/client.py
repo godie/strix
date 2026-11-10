@@ -39,6 +39,10 @@ from strix.tools.mcp.session import McpConnectionUnavailableError, SupervisedMcp
 
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+
+if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Mapping
 
     import httpx
@@ -94,7 +98,7 @@ def _auth_headers(config: McpConnectionConfig) -> dict[str, str]:
 
 
 @contextlib.asynccontextmanager
-async def _quiet_stdio_streams(params: Any) -> Any:
+async def _quiet_stdio_streams(params: Any) -> AsyncIterator[Any]:
     """Run a stdio MCP server with its stderr sent to the void.
 
     A stdio MCP server chats on stderr as it boots (the filesystem server, for

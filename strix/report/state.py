@@ -683,7 +683,9 @@ class ReportState:
         providers: dict[str, dict[str, float]] = {}
         for name, tally in (self._llm_usage.to_record().get("providers") or {}).items():
             before = baseline.get(name) or {}
-            delta = {key: max(0, value - _number(before.get(key))) for key, value in tally.items()}
+            delta: dict[str, float] = {
+                key: max(0, value - _number(before.get(key))) for key, value in tally.items()
+            }
             if delta["requests"]:
                 providers[name] = delta
         return providers

@@ -7,7 +7,7 @@ import json
 import os
 import time
 import urllib.request
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 
@@ -145,7 +145,10 @@ async def list_requests_with_client(
     if scope_id:
         builder = builder.scope(scope_id)
     target, field = _REQ_FIELD_MAP[sort_by]
-    builder = (builder.descending if sort_order == "desc" else builder.ascending)(target, field)
+    order = builder.descending if sort_order == "desc" else builder.ascending
+    # The generated SDK key each sort field to its request or response half;
+    # _REQ_FIELD_MAP already guarantees that pairing.
+    builder = cast("Callable[..., Any]", order)(target, field)
     return await builder.execute()
 
 

@@ -406,11 +406,13 @@ def pick_run(
     console: Console | None = None,
     stdin: TextIO | None = None,
 ) -> RunSummary | None:
-    stdin = stdin or sys.stdin
+    stream = stdin or sys.stdin
     console = console or Console()
-    if not (hasattr(stdin, "isatty") and stdin.isatty() and console.is_terminal):
+    if stream is None or not (
+        hasattr(stream, "isatty") and stream.isatty() and console.is_terminal
+    ):
         raise PickerUnavailableError(
             "--resume needs a run name when there is no interactive terminal"
         )
     picker = ResumePicker(runs, console=console, runs_dir=runs_dir)
-    return picker.run(lambda: read_key(stdin))
+    return picker.run(lambda: read_key(stream))

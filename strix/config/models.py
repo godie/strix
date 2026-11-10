@@ -110,7 +110,10 @@ class _CodexResponsesModel(OpenAIResponsesModel):
                     effort = "high"
                 case _:
                     pass
-            overrides = overrides.resolve(ModelSettings(reasoning=Reasoning(effort=effort)))
+            # clamped above to the values the SDK accepts
+            overrides = overrides.resolve(
+                ModelSettings(reasoning=Reasoning(effort=cast("Any", effort)))
+            )
         return model_settings.resolve(overrides)
 
     async def _fetch_response(self, *args: Any, stream: bool = False, **kwargs: Any) -> Any:
@@ -160,12 +163,13 @@ class _CodexResponsesModel(OpenAIResponsesModel):
         aclose = getattr(events, "aclose", None)
         if callable(aclose):
             with contextlib.suppress(Exception):
-                await aclose()
+                pending: Any = aclose()
+                await pending
             return
         close = getattr(events, "close", None)
         if callable(close):
             with contextlib.suppress(Exception):
-                result = close()
+                result: Any = close()
                 if inspect.isawaitable(result):
                     await result
 
