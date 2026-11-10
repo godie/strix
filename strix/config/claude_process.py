@@ -320,6 +320,7 @@ class _TurnOutput:
     def __init__(self, process: subprocess.Popen[str]) -> None:
         self._process = process
         self.result_line = ""
+        self.rate_limit_line = ""
         self.stdout_chars = 0
         self.overflowed = False
         self._stderr_tail: deque[str] = deque()
@@ -341,8 +342,15 @@ class _TurnOutput:
             event = json.loads(stripped)
         except json.JSONDecodeError:
             return
-        # Keep the raw line; the decoder re-parses it with the same line rules.
-        if isinstance(event, dict) and cast("dict[str, Any]", event).get("type") == "result":
+        # Keep the raw lines the decoder re-parses: the result event, plus the
+        # latest usage-limit event (the quota gate reads its reset time; the
+        # result line alone does not say when the window opens again).
+        if not isinstance(event, dict):
+            return
+        kind = cast("dict[str, Any]", event).get("type")
+        if kind == "rate_limit_event":
+            self.rate_limit_line = line
+        elif kind == "result":
             self.result_line = line
 
     def on_stderr(self, line: str) -> None:
@@ -423,7 +431,10 @@ def _communicate(
             retryable=False,
         )
     return subprocess.CompletedProcess(
-        args=process.args, returncode=returncode, stdout=out.result_line, stderr=out.stderr
+        args=process.args,
+        returncode=returncode,
+        stdout=out.rate_limit_line + out.result_line,
+        stderr=out.stderr,
     )
 
 
